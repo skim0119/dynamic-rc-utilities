@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "dynamic-rc-utilities"
+version = "0.1.0"
+description = "Set of utilities to perform/analyze reservoir computing paradigm for dynamic substrates."
+authors = ["Seung Hyun Kim <skim0119@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "rc", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.8,<3.11"
+miv-os = "^0.2.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
