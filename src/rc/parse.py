@@ -105,9 +105,7 @@ def parse_spiketrain(data, path, preprocess=None, verbose:bool=True, force:bool=
     assert data is not None
     if preprocess is None:
         preprocess = _preprocess
-    pre_filter = FilterCollection(tag="Filter Example").append(
-        ButterBandpass(lowcut=300, highcut=3000, order=4)
-    )
+    pre_filter = ButterBandpass(lowcut=300, highcut=3000, order=4)
     spike_detection = ThresholdCutoff()
     # Apply filter to `dataset[0]`
 
@@ -118,7 +116,7 @@ def parse_spiketrain(data, path, preprocess=None, verbose:bool=True, force:bool=
             tqdm(
                 pool.imap(
                     partial(preprocess, filter=pre_filter, detector=spike_detection),
-                    data.load_fragments(num_fragments=num_fragments),
+                    data.load(num_fragments=num_fragments),
                 ),
                 total=num_fragments,
             )
@@ -176,3 +174,47 @@ def spike_decoding(spikestamps, probe_times, path:str=None, verbose:bool=True, f
         np.savez(path, X=np.array(Xs))
         vprint(f"\t[+] spike decoding: Data saved in ({path}).")
     return Xs
+
+def parse_spiketrain_intan(data, path, preprocess=None, verbose:bool=True, force:bool=False):
+    if not verbose:
+        vprint = lambda x: x
+    else:
+        vprint = print
+    if not force and os.path.exists(path):
+        vprint(f"\t[-] parse_spiketrain: The path ({path}) already exists for {data=}.")
+        with open(path, "rb") as handle:
+            total_spikestamps = pkl.load(handle)
+        return total_spikestamps
+
+    assert data is not None
+    if preprocess is None:
+        preprocess = _preprocess
+    pre_filter = ButterBandpass(lowcut=300, highcut=3000, order=4)
+    spike_detection = ThresholdCutoff()
+
+    #stim, timestamps, sampling_rate = data.get_stimulation()
+    #stimulated_channels = np.where(np.abs(stim).sum(axis=0))[0]
+    #stimulated_channel = stimulated_channels[0]
+    #stim = stim[:, stimulated_channel]
+    
+    #events = ~np.isclose(stim, 0)
+    #eventstrain = timestamps[np.where(events)[0]]
+    #ref = np.concatenate([[True], np.diff(eventstrain) > refractory])
+    #eventstrain = eventstrain[ref]
+    
+    total_spikestamps = Spikestamps([])
+    for signal, timestamps, sampling_rate in data.load():
+        filtered_signal = pre_filter(signal, sampling_rate)
+        spikestamp = spike_detection(filtered_signal, timestamps, sampling_rate, return_neotype=False, progress_bar=False)
+        total_spikestamps.extend(spikestamp)
+
+    with open(path, "wb") as handle:
+        pkl.dump(total_spikestamps, handle, protocol=pkl.HIGHEST_PROTOCOL)
+    fig = plt.figure(figsize=(12, 12))
+    plt.eventplot(total_spikestamps)
+    plt.xlabel("time (sec)")
+    plt.ylabel("channels")
+    plt.title("spiketrain")
+    plt.savefig(path + ".png")
+    plt.close(fig)
+    return total_spikestamps
