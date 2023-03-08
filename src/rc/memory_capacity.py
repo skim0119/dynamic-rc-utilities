@@ -11,8 +11,6 @@ from sklearn.linear_model import Ridge
 from sklearn.svm import SVC
 import scipy.stats as spst
 
-from config import *
-
 ALLOWED_CORRELATION_METHOD = Literal["pearson", "spearman"]
 
 
