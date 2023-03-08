@@ -1,10 +1,37 @@
+from typing import Optional
 import numpy as np
 import pickle as pkl
 
-def get_nearest(array, value):
+def get_nearest(array, value, idx_guess:int=0):
+    """
+    Assume array is ascending array, get nearest
+    """
     array = np.asarray(array)
-    idx = (np.abs(array - value)).argmin()
-    return array[idx], np.abs(array[idx] - value)
+
+    # Corner cases
+    if value < array[0]:
+        return array[0], np.abs(array[0]-value), 0
+    elif array[-1] < value:
+        return array[-1], np.abs(array[-1]-value), array.shape[0]-1
+    # Binary Search
+    left = 0
+    right = array.shape[0] - 1
+    min_diff = np.abs(array[left] - value)
+    mid_index = left
+    while left <= right:
+        mid = (left+right)//2
+        diff = np.abs(array[mid] - value)
+        if diff < min_diff:
+            min_diff = diff
+            mid_index = mid
+
+        if array[mid] < value:
+            left = mid+1
+        elif array[mid] > value:
+            right = mid-1
+        else:
+            return mid
+    return array[mid_index], np.abs(array[mid_index] - value), mid_index
 
 def rand_jitter(arr):
     stdev = .01 * (max(arr) - min(arr))
