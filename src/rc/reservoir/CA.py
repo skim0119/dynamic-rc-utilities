@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 import cellpylib as cpl
 
+
 class CA:
     """
     Cellular Automata
@@ -57,9 +58,11 @@ class CA:
         self.sample_idx = self.rng.choice(reservoir_size * self.ca_iteration, size=subsample_size, replace=False)
 
         # Input weight
+        input_size = reservoir_size // 2 # minimum: in_size, maximum: reservoir_size
         self.Win = np.zeros((in_size, reservoir_size)) 
-        ind = self.rng.choice(np.arange(4), reservoir_size)
-        self.Win[ind, np.arange(reservoir_size)] = 1
+        ind = self.rng.choice(np.arange(4), input_size, replace=False)
+        which = self.rng.choice(np.arange(reservoir_size), input_size, replace=False)
+        self.Win[ind, which] = 1
 
         # Output weight (pretrained)
         #self.state_size = 1 + in_size + reservoir_size
@@ -107,3 +110,37 @@ class CA:
             dm[t] = state
         y = np.dot(dm, self.Wout)
         return dm, y
+
+if __name__ == "__main__":
+    ca = CA(4, 4, 10, 30)
+    data = np.zeros((2, 4))
+    data[:,3] = 1
+
+    dm, _ = ca.predict(data, new_start=True)
+    print(dm)
+    print(dm.shape)
+    print(dm.sum(1))
+
+    data = np.zeros((2, 4))
+    data[:,0] = 1
+    print((data[:1,:] @ ca.Win))
+    print((data[:1,:] @ ca.Win).sum())
+    print((data[:1,:] @ ca.Win).shape)
+    data = np.zeros((2, 4))
+    data[:,1] = 1
+    print((data[:1,:] @ ca.Win))
+    print((data[:1,:] @ ca.Win).sum())
+    print((data[:1,:] @ ca.Win).shape)
+    data = np.zeros((2, 4))
+    data[:,2] = 1
+    print((data[:1,:] @ ca.Win))
+    print((data[:1,:] @ ca.Win).sum())
+    print((data[:1,:] @ ca.Win).shape)
+    data = np.zeros((2, 4))
+    data[:,3] = 1
+    print((data[:1,:] @ ca.Win))
+    print((data[:1,:] @ ca.Win).sum())
+    print((data[:1,:] @ ca.Win).shape)
+    print(np.unique(data[:1,:] @ ca.Win))
+
+    print(ca.Win)
