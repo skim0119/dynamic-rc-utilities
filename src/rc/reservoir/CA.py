@@ -60,7 +60,7 @@ class CA:
         # Input weight
         input_size = reservoir_size // 2 # minimum: in_size, maximum: reservoir_size
         self.Win = np.zeros((in_size, reservoir_size)) 
-        ind = self.rng.choice(np.arange(4), input_size, replace=False)
+        ind = self.rng.choice(np.arange(in_size), input_size, replace=True)
         which = self.rng.choice(np.arange(reservoir_size), input_size, replace=False)
         self.Win[ind, which] = 1
 
