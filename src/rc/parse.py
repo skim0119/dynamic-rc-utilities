@@ -83,7 +83,7 @@ def parse_spiketrain(data, path, verbose:bool=True, force:bool=False):
     assert data is not None
 
     bandpass_filter = ButterBandpass(lowcut=300, highcut=3000, order=4)
-    spike_detection = ThresholdCutoff()
+    spike_detection = ThresholdCutoff(progress_bar=True)
     data >> bandpass_filter >> spike_detection
     Pipeline(spike_detection).run(data.analysis_path)
 
