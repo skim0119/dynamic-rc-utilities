@@ -87,7 +87,7 @@ def parse_spiketrain(data, path, verbose:bool=True, force:bool=False):
     data >> bandpass_filter >> spike_detection
     Pipeline(spike_detection).run(data.analysis_path)
 
-    total_spikestamps = spike_detection.output.data
+    total_spikestamps = spike_detection.output
     if path is not None:
         with open(path, "wb") as handle:
             pkl.dump(total_spikestamps, handle, protocol=pkl.HIGHEST_PROTOCOL)
