@@ -9,7 +9,7 @@ from functools import partial
 import matplotlib.pyplot as plt
 
 from miv.io.openephys import Data, DataManager
-from miv.signal.filter import ButterBandpass, FilterProtocol
+from miv.signal.filter import ButterBandpass
 from miv.signal.spike import ThresholdCutoff
 from miv.core.datatype import Spikestamps
 from miv.core.pipeline import Pipeline
@@ -68,22 +68,6 @@ def parse_event_data(data, binsize, path, verbose:bool=True, force:bool=False, b
     np.savez(path, data=np.array(data), time=np.array(time))
     vprint(f"\t[+] parse_event_data: Data saved in ({path}).")
     return np.array(data), np.array(time)
-
-def _preprocess(data, filter: FilterProtocol, detector: SpikeDetectionProtocol):
-    signal, timestamps, sampling_rate = data
-    # DEBUG
-    #for ch in range(signal.shape[1]):
-    #    print(ch, np.mean(signal[:,ch]), signal[:,ch].max(), signal[:,ch].min(), np.median(signal[:,ch]), np.std(signal[:,ch]))
-    #input('pause')
-    filtered_signal = filter(signal, sampling_rate)
-    spiketrains = detector(
-        filtered_signal,
-        timestamps,
-        sampling_rate,
-        return_neotype=False,
-        progress_bar=False,
-    )
-    return spiketrains
 
 
 def parse_spiketrain(data, path, verbose:bool=True, force:bool=False):
@@ -161,8 +145,6 @@ def parse_spiketrain_intan(data, path, delay=0, preprocess=None, verbose:bool=Tr
         return total_spikestamps
 
     assert data is not None
-    if preprocess is None:
-        preprocess = _preprocess
     pre_filter = ButterBandpass(lowcut=300, highcut=3000, order=4)
     spike_detection = ThresholdCutoff()
 
