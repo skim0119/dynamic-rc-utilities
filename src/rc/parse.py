@@ -9,8 +9,8 @@ from functools import partial
 import matplotlib.pyplot as plt
 
 from miv.io.openephys import Data, DataManager
-from miv.signal.filter import FilterCollection, ButterBandpass, FilterProtocol
-from miv.signal.spike import ThresholdCutoff, SpikeDetectionProtocol
+from miv.signal.filter import ButterBandpass, FilterProtocol
+from miv.signal.spike import ThresholdCutoff
 from miv.core.datatype import Spikestamps
 from miv.core.pipeline import Pipeline
 from miv.statistics import decay_spike_counts, spike_counts_with_kernel
