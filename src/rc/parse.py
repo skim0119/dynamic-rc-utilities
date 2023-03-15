@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 from miv.io.data import Data, DataManager
 from miv.signal.filter import FilterCollection, ButterBandpass, FilterProtocol
 from miv.signal.spike import ThresholdCutoff, SpikeDetectionProtocol
-from miv.core import Spikestamps
+from miv.core.datatype import Spikestamps
+from miv.core.pipeline import Pipeline
 from miv.statistics import decay_spike_counts, spike_counts_with_kernel
 
 import pickle as pkl
@@ -31,7 +32,10 @@ def parse_event_data(data, binsize, path, verbose:bool=True, force:bool=False, b
         data = np.load(path)
         return data["data"], data["time"]
     assert data is not None
-    states, full_words, timestamps, sampling_rate, initial_state = data.load_ttl_event()
+
+    ttl_signal = data.load_ttl_event()
+    states = ttl_signal[0]
+    timestamps = ttl_signal.timestamps
 
     on = timestamps[states == 1]
     off = timestamps[states == -1]
@@ -82,7 +86,7 @@ def _preprocess(data, filter: FilterProtocol, detector: SpikeDetectionProtocol):
     return spiketrains
 
 
-def parse_spiketrain(data, path, preprocess=None, verbose:bool=True, force:bool=False):
+def parse_spiketrain(data, path, verbose:bool=True, force:bool=False):
     if not verbose:
         vprint = lambda x: x
     else:
@@ -92,38 +96,17 @@ def parse_spiketrain(data, path, preprocess=None, verbose:bool=True, force:bool=
         with open(path, "rb") as handle:
             total_spikestamps = pkl.load(handle)
         return total_spikestamps
-
     assert data is not None
-    if preprocess is None:
-        preprocess = _preprocess
-    pre_filter = ButterBandpass(lowcut=300, highcut=3000, order=4)
-    spike_detection = ThresholdCutoff()
-    # Apply filter to `dataset[0]`
 
-    num_fragments = 100
-    total_spikestamps = Spikestamps([])
-    with mp.Pool(8) as pool:
-        results = list(
-            tqdm(
-                pool.imap(
-                    partial(preprocess, filter=pre_filter, detector=spike_detection),
-                    data.load(num_fragments=num_fragments),
-                ),
-                total=num_fragments,
-            )
-        )
-        for spikestamp in results:
-            total_spikestamps.extend(spikestamp)
+    bandpass_filter = ButterBandpass(lowcut=300, highcut=3000, order=4)
+    spike_detection = ThresholdCutoff()
+    data >> bandpass_filter >> spike_detection
+    Pipeline(spike_detection).run(data.analysis_path)
+
+    total_spikestamps = spike_detection.output.data
     if path is not None:
         with open(path, "wb") as handle:
             pkl.dump(total_spikestamps, handle, protocol=pkl.HIGHEST_PROTOCOL)
-        fig = plt.figure(figsize=(12, 12))
-        plt.eventplot(total_spikestamps)
-        plt.xlabel("time (sec)")
-        plt.ylabel("channels")
-        plt.title("spiketrain")
-        plt.savefig(path + ".png")
-        plt.close(fig)
     return total_spikestamps
 
 def spike_decoding(spikestamps, probe_times, path:str=None, verbose:bool=True, force:bool=False, progress_bar:bool=False):
