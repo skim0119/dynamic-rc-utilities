@@ -8,7 +8,7 @@ from functools import partial
 
 import matplotlib.pyplot as plt
 
-from miv.io.data import Data, DataManager
+from miv.io.openephys import Data, DataManager
 from miv.signal.filter import FilterCollection, ButterBandpass, FilterProtocol
 from miv.signal.spike import ThresholdCutoff, SpikeDetectionProtocol
 from miv.core.datatype import Spikestamps
