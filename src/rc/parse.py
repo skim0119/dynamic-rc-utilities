@@ -83,7 +83,7 @@ def parse_spiketrain(data, path, verbose:bool=True, force:bool=False):
     assert data is not None
 
     bandpass_filter = ButterBandpass(lowcut=300, highcut=3000, order=4)
-    spike_detection = ThresholdCutoff(progress_bar=True)
+    spike_detection = ThresholdCutoff(progress_bar=False)
     data >> bandpass_filter >> spike_detection
     Pipeline(spike_detection).run(data.analysis_path)
 
@@ -133,7 +133,7 @@ def spike_decoding(spikestamps, probe_times, path:str=None, verbose:bool=True, f
         vprint(f"\t[+] spike decoding: Data saved in ({path}).")
     return Xs
 
-def parse_spiketrain_intan(data, path, delay=0, preprocess=None, verbose:bool=True, force:bool=False):
+def parse_spiketrain_intan(data, path, preprocess=None, verbose:bool=True, force:bool=False):
     if not verbose:
         vprint = lambda x: x
     else:
@@ -145,34 +145,13 @@ def parse_spiketrain_intan(data, path, delay=0, preprocess=None, verbose:bool=Tr
         return total_spikestamps
 
     assert data is not None
-    pre_filter = ButterBandpass(lowcut=300, highcut=3000, order=4)
+    bandpass_filter = ButterBandpass(lowcut=300, highcut=3000, order=4)
     spike_detection = ThresholdCutoff()
-
-    #stim, timestamps, sampling_rate = data.get_stimulation()
-    #stimulated_channels = np.where(np.abs(stim).sum(axis=0))[0]
-    #stimulated_channel = stimulated_channels[0]
-    #stim = stim[:, stimulated_channel]
-    
-    #events = ~np.isclose(stim, 0)
-    #eventstrain = timestamps[np.where(events)[0]]
-    #ref = np.concatenate([[True], np.diff(eventstrain) > refractory])
-    #eventstrain = eventstrain[ref]
-    
-    total_spikestamps = Spikestamps([])
-    for signal, timestamps, sampling_rate in tqdm(data.load(), total=len(data.get_recording_files())):
-        filtered_signal = pre_filter(signal, sampling_rate)
-        spikestamp = spike_detection(filtered_signal, timestamps, sampling_rate, return_neotype=False, progress_bar=False)
-        total_spikestamps.extend(spikestamp)
-    for i in range(len(total_spikestamps)):
-        total_spikestamps[i] -= delay
+    data >> bandpass_filter >> spike_detection
+    Pipeline(spike_detection).run(data.analysis_path)
+    total_spikestamps = spike_detection.output
 
     with open(path, "wb") as handle:
         pkl.dump(total_spikestamps, handle, protocol=pkl.HIGHEST_PROTOCOL)
-    fig = plt.figure(figsize=(12, 12))
-    plt.eventplot(total_spikestamps)
-    plt.xlabel("time (sec)")
-    plt.ylabel("channels")
-    plt.title("spiketrain")
-    plt.savefig(path + ".png")
-    plt.close(fig)
+    
     return total_spikestamps
