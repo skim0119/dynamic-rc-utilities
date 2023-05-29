@@ -70,7 +70,7 @@ def parse_event_data(data, binsize, path, verbose:bool=True, force:bool=False, b
     return np.array(data), np.array(time)
 
 
-def parse_spiketrain(data, path, verbose:bool=True, force:bool=False):
+def parse_spiketrain(data, path, verbose:bool=True, force:bool=False, impedances=None):
     if not verbose:
         vprint = lambda x: x
     else:
@@ -91,6 +91,11 @@ def parse_spiketrain(data, path, verbose:bool=True, force:bool=False):
     if path is not None:
         with open(path, "wb") as handle:
             pkl.dump(total_spikestamps, handle, protocol=pkl.HIGHEST_PROTOCOL)
+
+    if impedances is not None:
+        channels_with_impedances_in_range = list(impedances.keys())
+        total_spikestamps = total_spikestamps.select(channels_with_impedances_in_range)
+
     return total_spikestamps
 
 def spike_decoding(spikestamps, probe_times, path:str=None, verbose:bool=True, force:bool=False, progress_bar:bool=False):
