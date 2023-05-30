@@ -88,13 +88,12 @@ def parse_spiketrain(data, path, verbose:bool=True, force:bool=False, impedances
     Pipeline(spike_detection).run(data.analysis_path)
 
     total_spikestamps = spike_detection.output
-    if path is not None:
-        with open(path, "wb") as handle:
-            pkl.dump(total_spikestamps, handle, protocol=pkl.HIGHEST_PROTOCOL)
-
     if impedances is not None:
         channels_with_impedances_in_range = list(impedances.keys())
         total_spikestamps = total_spikestamps.select(channels_with_impedances_in_range)
+    if path is not None:
+        with open(path, "wb") as handle:
+            pkl.dump(total_spikestamps, handle, protocol=pkl.HIGHEST_PROTOCOL)
 
     return total_spikestamps
 
