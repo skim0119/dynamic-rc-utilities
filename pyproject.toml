@@ -5,7 +5,7 @@ description = "Set of utilities to perform/analyze reservoir computing paradigm 
 authors = ["Seung Hyun Kim <skim0119@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "rc", from = "src"}]
+packages = [{include = "pybrc", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.8,<3.11"

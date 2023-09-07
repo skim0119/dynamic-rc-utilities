@@ -31,6 +31,7 @@ def get_nearest(array, value, idx_guess:int=0):
             right = mid-1
         else:
             return mid
+
     return array[mid_index], np.abs(array[mid_index] - value), mid_index
 
 def rand_jitter(arr):

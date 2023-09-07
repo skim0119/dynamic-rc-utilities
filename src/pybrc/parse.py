@@ -82,10 +82,10 @@ def parse_spiketrain(data, path, verbose:bool=True, force:bool=False, impedances
         return total_spikestamps
     assert data is not None
 
-    bandpass_filter = ButterBandpass(lowcut=300, highcut=3000, order=4)
-    spike_detection = ThresholdCutoff(progress_bar=False)
+    bandpass_filter = ButterBandpass(lowcut=400, highcut=1500, order=4)
+    spike_detection = ThresholdCutoff()
     data >> bandpass_filter >> spike_detection
-    Pipeline(spike_detection).run(data.analysis_path)
+    Pipeline(spike_detection).run(data.analysis_path, verbose=True, skip_plot=True)
 
     total_spikestamps = spike_detection.output
     if impedances is not None:
@@ -94,6 +94,7 @@ def parse_spiketrain(data, path, verbose:bool=True, force:bool=False, impedances
     if path is not None:
         with open(path, "wb") as handle:
             pkl.dump(total_spikestamps, handle, protocol=pkl.HIGHEST_PROTOCOL)
+        vprint(f"\t[+] parse_spiketrain: Data saved in ({path}).")
 
     return total_spikestamps
 
@@ -108,7 +109,7 @@ def spike_decoding(spikestamps, probe_times, path:str=None, verbose:bool=True, f
         return data["X"]
 
     _N = 1
-    Xs = np.empty((probe_times.shape[0], len(spikestamps) * _N))
+    Xs = np.zeros((probe_times.shape[0], len(spikestamps) * _N))
     for idx, spiketrain in tqdm(enumerate(spikestamps), disable=not progress_bar, total=len(spikestamps)):
         idx_N = idx * _N
         # Decay spike count
@@ -119,6 +120,7 @@ def spike_decoding(spikestamps, probe_times, path:str=None, verbose:bool=True, f
         Xs[:, idx_N + 0] = spike_counts_with_kernel(
             np.asarray(spiketrain), probe_times, lambda x: np.logical_and(x>0, x<1).astype(np.float_)
         )
+
         # Vector of tanhs
         # Xs[:, idx_N + 0] = spike_counts_with_kernel(
         #     np.asarray(spiketrain), probe_times, lambda x: 1.0 - np.tanh(x)
@@ -132,6 +134,7 @@ def spike_decoding(spikestamps, probe_times, path:str=None, verbose:bool=True, f
         # Xs[:, idx_N + 3] = spike_counts_with_kernel(
         #     np.asarray(spiketrain), probe_times, lambda x: -1.0 - np.tanh(-x)
         # )
+    print("    ", Xs.mean(), Xs.std())
     if path is not None:
         np.savez(path, X=np.array(Xs))
         vprint(f"\t[+] spike decoding: Data saved in ({path}).")
