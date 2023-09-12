@@ -19,7 +19,7 @@ import pickle as pkl
 
 from tqdm import tqdm
 
-from rc.utils import get_nearest
+from pybrc.utils import get_nearest
 
 
 def parse_event_data(data, binsize, path, verbose:bool=True, force:bool=False, binsize_threshold:float=0.001):
