@@ -39,6 +39,9 @@ def parse_event_data(data, binsize, path, verbose:bool=True, force:bool=False, b
 
     on = timestamps[states == 1]
     off = timestamps[states == -1]
+    print(f"{len(on)=}")
+    print(f"{len(off)=}")
+    print(f"{np.unique(states, return_counts=True)=}")
 
     off_probe = 0
     time = []
@@ -87,7 +90,7 @@ def parse_spiketrain(data, path, verbose:bool=True, force:bool=False, impedances
     data >> bandpass_filter >> spike_detection
     Pipeline(spike_detection).run(data.analysis_path, verbose=True, skip_plot=True)
 
-    total_spikestamps = spike_detection.output
+    total_spikestamps = spike_detection.output()
     if impedances is not None:
         channels_with_impedances_in_range = list(impedances.keys())
         total_spikestamps = total_spikestamps.select(channels_with_impedances_in_range)
@@ -156,7 +159,7 @@ def parse_spiketrain_intan(data, path, preprocess=None, verbose:bool=True, force
     spike_detection = ThresholdCutoff()
     data >> bandpass_filter >> spike_detection
     Pipeline(spike_detection).run(data.analysis_path)
-    total_spikestamps = spike_detection.output
+    total_spikestamps = spike_detection.output()
 
     with open(path, "wb") as handle:
         pkl.dump(total_spikestamps, handle, protocol=pkl.HIGHEST_PROTOCOL)
