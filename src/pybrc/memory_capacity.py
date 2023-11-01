@@ -39,7 +39,7 @@ def memory_capacity(
             data = X[tau:]
 
         if discrete:  # Classification memory capacity
-            clf = SVC(C=regularization_factor, kernel='linear')
+            clf = SVC(C=regularization_factor)
             patterns = np.unique(y)
             clf.fit(data, s)
             h = clf.predict(data)
