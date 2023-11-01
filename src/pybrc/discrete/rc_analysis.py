@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import os, sys
 import multiprocessing as mp
@@ -41,7 +41,6 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
     def __post_init__(self):
         super().__init__()
 
-    @cache_call
     def __call__(self, training_states, input_signal, *test_input_states_tuples):
         """
         test_input_state_tuples contain remaining tuples as:
@@ -218,6 +217,7 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
         plt.close('all')
 
     def tuning_curve(self, clf, X, y, log):
+        patterns = np.unique(y)
 
         # Tuning curve
         reg = LinearRegression()
@@ -242,7 +242,7 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
         axes[1].set_ylabel("firing rate")
         axes[0].set_title("Excitatory")
         axes[1].set_title("Inhibitory")
-        plt.savefig(os.path.join(save_path,"tuning_curve.png"))
+        plt.savefig(os.path.join(self.analysis_path,"tuning_curve.png"))
         plt.close()
         self.logger.info("done: plot tuning curve")
 
@@ -263,7 +263,7 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
         plt.xlabel("Number of Samples")
         plt.ylabel("Score")
         plt.title("Learning Curve")
-        plt.savefig(os.path.join(save_path, "learning_curve.png"))
+        plt.savefig(os.path.join(self.analysis_path, "learning_curve.png"))
         plt.close()
         self.logger.info("done: learning curve")
 
@@ -278,6 +278,6 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
             axes.set_xlabel("occurance")
             axes.set_ylabel("firing rate")
             fig.suptitle(f"{pattern=}")
-            plt.savefig(os.path.join(save_path, f"mean_firing_rate_per_pattern_{pattern}.png"))
+            plt.savefig(os.path.join(self.analysis_path, f"mean_firing_rate_per_pattern_{pattern}.png"))
             plt.close()
         self.logger.info("done: firng rate for each patterns")
