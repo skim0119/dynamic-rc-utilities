@@ -37,39 +37,71 @@ class ParseInput(OperatorMixin):
 
     @cache_call
     def __call__(self, ttl_signal):
+        os.makedirs(self.analysis_path, exist_ok=True)
+
         states = ttl_signal[0]
         timestamps = ttl_signal.timestamps
 
+        stime = timestamps.min()
+        etime = timestamps.max()
+
+        # DEBUG: plotting ttl -- maybe add in sequence
+        interval = 10
+        plt.figure()
+        plt.plot(timestamps, states)
+        plt.xlabel('time (sec)')
+        plt.ylabel('TTL state')
+        idx = 0
+        while stime < etime:
+            plt.xlim(stime, stime+interval)
+            plt.savefig(os.path.join(self.analysis_path, f"ttl_state_{idx:04d}.png"))
+            stime += interval
+            idx += 1
+        plt.close('all')
+
+        time = []
+        data = []
         on = timestamps[states == self.TTL_state]
         off = timestamps[states == -self.TTL_state]
 
         self.logger.info(f"{len(on)=} should be same as {len(off)=}")
         self.logger.info(f"TTL states in this recording: {np.unique(states, return_counts=True)=}")
 
-        off_probe = 0
-        time = []
-        data = []
-        front_bar = on[0]
-        while front_bar < off[-1]:
+        if len(on) == 0:
+            return np.array(data), np.array(time)
+
+        #off_probe = 0
+        deltas = []
+        front_bar = next_bar = on[0]
+        index = 0
+        while next_bar < on[-1]:
             next_bar = front_bar + self.binsize
 
             # Correct "next_bar" for little offset
-            _nearest_next_on, delta, _ = get_nearest(on, next_bar)
+            _nearest_next_on, delta, next_index = get_nearest(on, next_bar)
+            deltas.append(delta)
             if delta < self.binsize_threshold:
                 next_bar = _nearest_next_on
-                
-            count = 0
-            while off_probe < len(off) and off[off_probe] < next_bar:
-                off_probe += 1
-                count += 1
-            data.append(count)
-            time.append(next_bar)
-            front_bar = next_bar
 
-            #if count == 1:
-            #    plt.eventplot(on-front_bar, color='black', lineoffsets=pp)
-            #    plt.eventplot(off-front_bar, color='red', lineoffsets=pp)
-            #    pp += 1
+            data.append(next_index - index)
+            time.append(next_bar)
+            front_bar, index = next_bar, next_index
+
+            # Using OFF 
+            # count = 0
+            # while off_probe < len(off) and off[off_probe] < next_bar:
+            #     off_probe += 1
+            #     count += 1
+            # data.append(count)
+            # time.append(next_bar)
+            # front_bar = next_bar
+
+        # Plot histogram of delta
+        plt.figure()
+        plt.hist(deltas, bins=50)
+        plt.title("(should be close to zero, ideally all smaller than pulse length)")
+        plt.savefig(os.path.join(self.analysis_path, 'parsing_precision.png'))
+        plt.close('all')
 
         return np.array(data), np.array(time)
     # TODO: plot distribution of data
