@@ -62,9 +62,8 @@ class ParseInput(OperatorMixin):
         time = []
         data = []
         on = timestamps[states == self.TTL_state]
-        off = timestamps[states == -self.TTL_state]
 
-        self.logger.info(f"{len(on)=} should be same as {len(off)=}")
+        self.logger.info(f"{len(on)=}")
         self.logger.info(f"TTL states in this recording: {np.unique(states, return_counts=True)=}")
 
         if len(on) == 0:
@@ -87,15 +86,6 @@ class ParseInput(OperatorMixin):
             time.append(next_bar)
             front_bar, index = next_bar, next_index
 
-            # Using OFF 
-            # count = 0
-            # while off_probe < len(off) and off[off_probe] < next_bar:
-            #     off_probe += 1
-            #     count += 1
-            # data.append(count)
-            # time.append(next_bar)
-            # front_bar = next_bar
-
         # Plot histogram of delta
         plt.figure()
         plt.hist(deltas, bins=50)
@@ -104,8 +94,89 @@ class ParseInput(OperatorMixin):
         plt.close('all')
 
         return np.array(data), np.array(time)
-    # TODO: plot distribution of data
-    # TODO: some other debugging plots
+
+    def plot_data_distribution(self, outputs, inputs, show=False, save_path=None):
+        data, time = outputs
+        plt.figure()
+        plt.hist(data, bins=20)
+        plt.title(f"Data distribution (mean={data.mean():.2f}, std={data.std():.2f})")
+        plt.xlabel("Pattern Indes")
+        plt.ylabel("Count")
+        if save_path is not None:
+            plt.savefig(os.path.join(save_path, 'data_distribution.png'))
+        if show:
+            plt.show()
+        plt.close('all')
+
+
+@dataclass
+class ParseInputConstPulse(OperatorMixin):
+    """
+    Used for constant pulse input
+    """
+    binsize: float
+
+    TTL_state: int = 1
+    binsize_threshold: float = 0.001  # sec
+    tag: str = "input parsing"
+
+    def __post_init__(self):
+        super().__init__()
+
+    @cache_call
+    def __call__(self, ttl_signal):
+        os.makedirs(self.analysis_path, exist_ok=True)
+
+        states = ttl_signal[0]
+        timestamps = ttl_signal.timestamps
+
+        stime = timestamps.min()
+        etime = timestamps.max()
+
+        # DEBUG: plotting ttl -- maybe add in sequence
+        interval = 10
+        plt.figure()
+        plt.plot(timestamps, states)
+        plt.xlabel('time (sec)')
+        plt.ylabel('TTL state')
+        idx = 0
+        while stime < etime:
+            plt.xlim(stime, stime+interval)
+            plt.savefig(os.path.join(self.analysis_path, f"ttl_state_{idx:04d}.png"))
+            stime += interval
+            idx += 1
+        plt.close('all')
+
+        time = []
+        data = []
+        on = timestamps[states == self.TTL_state]
+
+        self.logger.info(f"{len(on)=}")
+        self.logger.info(f"TTL states in this recording: {np.unique(states, return_counts=True)=}")
+
+        if len(on) <= 2:
+            return np.array(data), np.array(time)
+
+        time = on[::2]
+
+        val = on[1::2] - on[::2]
+        num_patterns = int(np.round(val.max() / val.min()))
+        self.logger.info(f"{num_patterns=}")
+        data = np.round(val / val.min()).astype(int)
+        return data, time
+
+    def plot_data_distribution(self, outputs, inputs, show=False, save_path=None):
+        data, time = outputs
+        plt.figure()
+        plt.hist(data, bins=20)
+        plt.title(f"Data distribution (mean={data.mean():.2f}, std={data.std():.2f})")
+        plt.xlabel("Pattern Indes")
+        plt.ylabel("Count")
+        if save_path is not None:
+            plt.savefig(os.path.join(save_path, 'data_distribution.png'))
+        if show:
+            plt.show()
+        plt.close('all')
 
 
 @dataclass
