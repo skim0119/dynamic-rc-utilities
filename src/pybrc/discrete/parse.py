@@ -183,6 +183,9 @@ class ParseInputConstPulse(OperatorMixin):
 class ParseTemporalDecoding(OperatorMixin):
     tag: str = "temporal decoding"
 
+    _N = 3
+    _Extra = 1
+
     def __post_init__(self):
         super().__init__()
 
@@ -190,8 +193,8 @@ class ParseTemporalDecoding(OperatorMixin):
     def __call__(self, spikestamps, input_parse):
         _, probe_times = input_parse
 
-        _N = 3
-        _Extra = 1
+        _N = self._N
+        _Extra = self._Extra
         Xs = np.zeros((probe_times.shape[0], len(spikestamps) * _N + _Extra))
 
         # Time
@@ -204,7 +207,7 @@ class ParseTemporalDecoding(OperatorMixin):
             #    np.asarray(spiketrain), probe_times, decay_rate=1
             #)
 
-            # Firing Rante
+            # Firing Rates
             Xs[:, idx_N + 0] = spike_counts_with_kernel(
                 np.asarray(spiketrain), probe_times, lambda x: np.logical_and(x>0, x<1).astype(np.float_)
             )
@@ -233,4 +236,29 @@ class ParseTemporalDecoding(OperatorMixin):
 
         return Xs
 
+    def plot_output(self, outputs, inputs, show=False, save_path=None):
+        Xs = outputs
+        spikestamps, (y, probe_times) = inputs
+        _N = self._N
+        _Extra = self._Extra
+        n_channels = len(spikestamps)
 
+        ids = np.sort(np.unique(y))
+        npatterns = ids.size
+
+        fig, axes = plt.subplots(n_channels, _N, figsize=(n_channels*0.5,_N*0.7*(npatterns / 4)), sharex=True, sharey=True)
+        for channel in range(n_channels):
+            for n in range(_N):
+                X = []
+                for pattern in ids:
+                    indices = y==pattern
+                    X.append(Xs[indices, _Extra+n+_N*channel])
+
+                axes[channel, n].boxplot(X, positions=ids)
+            axes[channel, 0].set_ylabel('val')
+
+        for n in range(_N):
+            axes[n_channels-1, n].set_xlabel('patterns')
+
+        if save_path is not None:
+            plt.savefig(os.path.join(save_path, 'states.png'))
