@@ -3,61 +3,30 @@ import multiprocessing as mp
 import numpy as np
 from dataclasses import dataclass
 
-from functools import partial
-
 import matplotlib.pyplot as plt
 
-from miv.io.openephys import Data, DataManager
-from miv.signal.filter import ButterBandpass
-from miv.signal.spike import ThresholdCutoff
 from miv.core.datatype import Spikestamps
-from miv.core.pipeline import Pipeline
 from miv.statistics import decay_spike_counts, spike_counts_with_kernel
 
 import pickle as pkl
 
 from tqdm import tqdm
 
-from pybrc.utils import get_nearest
-
 from miv.core.operator import OperatorMixin
 from miv.core.operator.wrapper import cache_call
 
+from pybrc.utils import get_nearest
+from pybrc.discrete.base import BaseParseInput
+
 
 @dataclass
-class ParseInput(OperatorMixin):
-    binsize: float
-
-    TTL_state: int = 1
+class ParseInput(BaseParseInput):
     binsize_threshold: float = 0.001  # sec
-    tag: str = "input parsing"
-
-    def __post_init__(self):
-        super().__init__()
 
     @cache_call
     def __call__(self, ttl_signal):
-        os.makedirs(self.analysis_path, exist_ok=True)
-
         states = ttl_signal[0]
         timestamps = ttl_signal.timestamps
-
-        stime = timestamps.min()
-        etime = timestamps.max()
-
-        # DEBUG: plotting ttl -- maybe add in sequence
-        interval = 10
-        plt.figure()
-        plt.plot(timestamps, states)
-        plt.xlabel('time (sec)')
-        plt.ylabel('TTL state')
-        idx = 0
-        while stime < etime:
-            plt.xlim(stime, stime+interval)
-            plt.savefig(os.path.join(self.analysis_path, f"ttl_state_{idx:04d}.png"))
-            stime += interval
-            idx += 1
-        plt.close('all')
 
         time = []
         data = []
@@ -95,33 +64,9 @@ class ParseInput(OperatorMixin):
 
         return np.array(data), np.array(time)
 
-    def plot_data_distribution(self, outputs, inputs, show=False, save_path=None):
-        data, time = outputs
-        plt.figure()
-        plt.hist(data, bins=20)
-        plt.title(f"Data distribution (mean={data.mean():.2f}, std={data.std():.2f})")
-        plt.xlabel("Pattern Indes")
-        plt.ylabel("Count")
-        if save_path is not None:
-            plt.savefig(os.path.join(save_path, 'data_distribution.png'))
-        if show:
-            plt.show()
-        plt.close('all')
-
 
 @dataclass
-class ParseInputConstPulse(OperatorMixin):
-    """
-    Used for constant pulse input
-    """
-    binsize: float
-
-    TTL_state: int = 1
-    binsize_threshold: float = 0.001  # sec
-    tag: str = "input parsing"
-
-    def __post_init__(self):
-        super().__init__()
+class ParseInputConstPulse(BaseParseInput):
 
     @cache_call
     def __call__(self, ttl_signal):
@@ -145,46 +90,6 @@ class ParseInputConstPulse(OperatorMixin):
         self.logger.info(f"{num_patterns=}")
         data = np.round(val / val.min()).astype(int)
         return data, time
-
-    def plot_ttl(self, outputs, inputs, show=False, save_path=None):
-        y, time = outputs
-        ttl_signal = inputs
-        states = ttl_signal[0]
-        timestamps = ttl_signal.timestamps
-
-        interval = 10
-        stime = timestamps.min()
-        etime = timestamps.max()
-
-        fig, ax1 = plt.subplots()
-        ax2 = ax1.twinx()
-
-        ax1.plot(timestamps, states)
-        ax2.plot(time, y, 'or')
-
-        ax1.set_xlabel('time (sec)')
-        ax1.set_ylabel('TTL state')
-        ax2.set_ylabel('Pattern')
-        idx = 0
-        while stime < etime:
-            plt.xlim(stime, stime+interval)
-            plt.savefig(os.path.join(save_path, f"ttl_state_{idx:04d}.png"))
-            stime += interval
-            idx += 1
-        plt.close('all')
-
-    def plot_data_distribution(self, outputs, inputs, show=False, save_path=None):
-        data, time = outputs
-        plt.figure()
-        plt.hist(data, bins=20)
-        plt.title(f"Data distribution (mean={data.mean():.2f}, std={data.std():.2f})")
-        plt.xlabel("Pattern Indes")
-        plt.ylabel("Count")
-        if save_path is not None:
-            plt.savefig(os.path.join(save_path, 'data_distribution.png'))
-        if show:
-            plt.show()
-        plt.close('all')
 
 
 @dataclass
