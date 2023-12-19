@@ -125,27 +125,8 @@ class ParseInputConstPulse(OperatorMixin):
 
     @cache_call
     def __call__(self, ttl_signal):
-        os.makedirs(self.analysis_path, exist_ok=True)
-
         states = ttl_signal[0]
         timestamps = ttl_signal.timestamps
-
-        stime = timestamps.min()
-        etime = timestamps.max()
-
-        # DEBUG: plotting ttl -- maybe add in sequence
-        interval = 10
-        plt.figure()
-        plt.plot(timestamps, states)
-        plt.xlabel('time (sec)')
-        plt.ylabel('TTL state')
-        idx = 0
-        while stime < etime:
-            plt.xlim(stime, stime+interval)
-            plt.savefig(os.path.join(self.analysis_path, f"ttl_state_{idx:04d}.png"))
-            stime += interval
-            idx += 1
-        plt.close('all')
 
         time = []
         data = []
@@ -164,6 +145,33 @@ class ParseInputConstPulse(OperatorMixin):
         self.logger.info(f"{num_patterns=}")
         data = np.round(val / val.min()).astype(int)
         return data, time
+
+    def plot_ttl(self, outputs, inputs, show=False, save_path=None):
+        y, time = outputs
+        ttl_signal = inputs
+        states = ttl_signal[0]
+        timestamps = ttl_signal.timestamps
+
+        interval = 10
+        stime = timestamps.min()
+        etime = timestamps.max()
+
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()
+
+        ax1.plot(timestamps, states)
+        ax2.plot(time, y, 'or')
+
+        ax1.set_xlabel('time (sec)')
+        ax1.set_ylabel('TTL state')
+        ax2.set_ylabel('Pattern')
+        idx = 0
+        while stime < etime:
+            plt.xlim(stime, stime+interval)
+            plt.savefig(os.path.join(save_path, f"ttl_state_{idx:04d}.png"))
+            stime += interval
+            idx += 1
+        plt.close('all')
 
     def plot_data_distribution(self, outputs, inputs, show=False, save_path=None):
         data, time = outputs
@@ -246,19 +254,20 @@ class ParseTemporalDecoding(OperatorMixin):
         ids = np.sort(np.unique(y))
         npatterns = ids.size
 
-        fig, axes = plt.subplots(n_channels, _N, figsize=(n_channels*0.5,_N*0.7*(npatterns / 4)), sharex=True, sharey=True)
         for channel in range(n_channels):
+            fig, axes = plt.subplots(1, _N, figsize=(16,12), sharex=True, sharey=True)
             for n in range(_N):
                 X = []
                 for pattern in ids:
                     indices = y==pattern
                     X.append(Xs[indices, _Extra+n+_N*channel])
 
-                axes[channel, n].boxplot(X, positions=ids)
-            axes[channel, 0].set_ylabel('val')
+                axes[n].boxplot(X, positions=ids)
+            axes[0].set_ylabel('val')
 
-        for n in range(_N):
-            axes[n_channels-1, n].set_xlabel('patterns')
+            for n in range(_N):
+                axes[n].set_xlabel('patterns')
 
-        if save_path is not None:
-            plt.savefig(os.path.join(save_path, 'states.png'))
+            if save_path is not None:
+                plt.savefig(os.path.join(save_path, f'states_{channel}.png'))
+            plt.close('all')
