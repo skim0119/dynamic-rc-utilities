@@ -22,7 +22,7 @@ class BaseParseInput(OperatorMixin):
 
     def plot_ttl(self, outputs, inputs, show=False, save_path=None):
         y, time = outputs
-        ttl_signal = inputs[0]
+        ttl_signal = inputs
 
         states = ttl_signal[0]
         timestamps = ttl_signal.timestamps

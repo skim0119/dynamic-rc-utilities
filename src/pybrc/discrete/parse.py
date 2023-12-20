@@ -105,6 +105,7 @@ class ParseTemporalDecoding(OperatorMixin):
     @cache_call
     def __call__(self, spikestamps, input_parse):
         _, probe_times = input_parse
+        binsize = probe_times[1] - probe_times[0]
 
         _N = self._N
         _Extra = self._Extra
@@ -116,20 +117,26 @@ class ParseTemporalDecoding(OperatorMixin):
             idx_N = idx * _N + _Extra
 
             # Decay spike count
-            #Xs[:, idx_N + 0] = decay_spike_counts(
-            #    np.asarray(spiketrain), probe_times, decay_rate=1
-            #)
+            Xs[:, idx_N + 0] = decay_spike_counts(
+                np.asarray(spiketrain), probe_times, decay_rate=5
+            )
+            Xs[:, idx_N + 1] = decay_spike_counts(
+                np.asarray(spiketrain), probe_times - (binsize / 3), decay_rate=5
+            )
+            Xs[:, idx_N + 2] = decay_spike_counts(
+                np.asarray(spiketrain), probe_times - 2 * (binsize / 3), decay_rate=5
+            )
 
             # Firing Rates
-            Xs[:, idx_N + 0] = spike_counts_with_kernel(
-                np.asarray(spiketrain), probe_times, lambda x: np.logical_and(x>0, x<1).astype(np.float_)
-            )
-            Xs[:, idx_N + 1] = spike_counts_with_kernel(
-                np.asarray(spiketrain), probe_times, lambda x: np.logical_and(x>0, x<0.5).astype(np.float_)
-            )
-            Xs[:, idx_N + 2] = spike_counts_with_kernel(
-                np.asarray(spiketrain), probe_times, lambda x: np.logical_and(x>0, x<0.25).astype(np.float_)
-            )
+            #Xs[:, idx_N + 0] = spike_counts_with_kernel(
+            #    np.asarray(spiketrain), probe_times, lambda x: np.logical_and(x>0, x<1).astype(np.float_)
+            #)
+            #Xs[:, idx_N + 1] = spike_counts_with_kernel(
+            #    np.asarray(spiketrain), probe_times, lambda x: np.logical_and(x>0, x<0.5).astype(np.float_)
+            #)
+            #Xs[:, idx_N + 2] = spike_counts_with_kernel(
+            #    np.asarray(spiketrain), probe_times, lambda x: np.logical_and(x>0, x<0.25).astype(np.float_)
+            #)
 
             # Vector of tanhs
             # Xs[:, idx_N + 0] = spike_counts_with_kernel(
@@ -176,3 +183,27 @@ class ParseTemporalDecoding(OperatorMixin):
             if save_path is not None:
                 plt.savefig(os.path.join(save_path, f'states_{channel}.png'))
             plt.close('all')
+
+    def plot_output_in_csv(self, outputs, inputs, show=False, save_path=None):
+        # Export
+        Xs = outputs
+        spikestamps, (y, probe_times) = inputs
+        _N = self._N
+        _Extra = self._Extra
+        n_channels = len(spikestamps)
+
+        header = ['time']
+        for ch in range(n_channels):
+            header.extend([f"ch{ch}_{n}" for n in range(_N)])
+        np.savetxt(
+            os.path.join(save_path, "Xs.csv"),
+            Xs,
+            delimiter=",",
+            header=",".join(header),
+        )
+        np.savetxt(
+            os.path.join(save_path, "ys.csv"),
+            np.vstack([probe_times, y]).T,
+            delimiter=",",
+            header=",".join(header),
+        )
