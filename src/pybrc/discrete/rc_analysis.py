@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 
 import os, sys
 import multiprocessing as mp
@@ -36,6 +36,9 @@ from pybrc.memory_capacity import memory_capacity
 class DiscreteTemporalRCAnalysis(OperatorMixin):
     rests: List
     tau_max: int = 100
+
+    target_function: Callable[[np.ndarray], np.ndarray] | None = None
+
     tag: str = "rc discrete analysis"
 
     def __post_init__(self):
@@ -49,9 +52,11 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
         log = OrderedDict([])
 
         os.makedirs(self.analysis_path, exist_ok=True)
+        self.logger.info(f"created: analysis path = {self.analysis_path}")
         X = training_states
         y, _ = input_signal
         if len(X) == 0 and len(y) == 0:
+            self.logger.info(f"missing data: training_states shape {X.shape=}, input_signal shape {y.shape=}")
             return 0
         log["X shape"] = X.shape
         log["y shape"] = y.shape
@@ -59,6 +64,10 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
         # Kernel rank
         log['kernel rank'] = int(kernel_rank(X))
         self.logger.info("done: computed kernel rank")
+
+        # ------------------- RC Targer Functional ----------------
+        if self.target_function is not None:
+            y = self.target_function(y)
 
         # ------------------- Training phase ----------------------
         c_opt = self.optimize_regularization(X, y, log, cv=10)
@@ -85,10 +94,15 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
             X_tests.append(X_test)
             y_tests.append(y_test)
         self.reconstruction_statistics_with_test(clf, X, y, X_tests, y_tests, log)
+        self.logger.info(f"done: reconstruction statistics plot")
 
         # ------------------- Debug and other statistics ---------
         self.tuning_curve(clf, X, y, log)
+        self.logger.info(f"done: tuning plot")
         self.firing_rate_plot(X, y, log)
+        self.logger.info(f"done: firing rate plot")
+
+        self.save_log(log)
 
         return 1
 
@@ -127,7 +141,9 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
             cmatrix_display = ConfusionMatrixDisplay(confusion_matrix=cmatrix)
             cmatrix_display.plot(ax=ax)
             ax.set_title(f"rest: {rest} min")
-            plt.savefig(os.path.join(self.analysis_path, f"reconstruction_after_rest_{rest}.png"))
+            save_path = os.path.join(self.analysis_path, f"reconstruction_after_rest_{rest}.png")
+            plt.savefig(save_path)
+            self.logger.info(f"done: plot reconstruction after reset: {save_path}")
             plt.close()
             
             precision, recall, f1, support = precision_recall_fscore_support(y_test, test_predicted_label, average="weighted", zero_division=0)
@@ -161,6 +177,7 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
         plt.title("Reconstruction score over time")
         plt.savefig(os.path.join(self.analysis_path, "reconstruction_test_over_time.png"))
         plt.close()
+        self.logger.info("done: plot reconstruction test over time")
 
     def inplot_memory_capacity(self, memory):
         plt.figure()
@@ -170,6 +187,7 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
         plt.title("Memory Capacity")
         plt.savefig(os.path.join(self.analysis_path, "memory_capacity.png"))
         plt.close('all')
+        self.logger.info("done: plot memory capacity")
 
     def optimize_regularization(self, X, y, log, cv=10):
         # Find Regularization Factor
@@ -200,6 +218,7 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
         plt.title("hyper-parameter tuning")
         plt.savefig(os.path.join(self.analysis_path, "regularization_tuning.png"))
         plt.close('all')
+        self.logger.info("done: plot regularization tuning")
 
         return best_c
 
@@ -265,6 +284,12 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
         plt.title("Learning Curve")
         plt.savefig(os.path.join(self.analysis_path, "learning_curve.png"))
         plt.close()
+        self.logger.info(f"  {size=}")
+        self.logger.info(f"  {train_scores.mean(axis=1)=}")
+        self.logger.info(f"  {train_scores.std(axis=1)=}")
+        self.logger.info(f"  {test_scores.mean(axis=1)=}")
+        self.logger.info(f"  {test_scores.std(axis=1)=}")
+        self.logger.info(f"  {size=}")
         self.logger.info("done: learning curve")
 
     def firing_rate_plot(self, X, y, log):

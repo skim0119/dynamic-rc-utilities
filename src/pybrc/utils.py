@@ -30,7 +30,7 @@ def get_nearest(array, value, idx_guess:int=0):
         elif array[mid] > value:
             right = mid-1
         else:
-            return mid
+            break
 
     return array[mid_index], np.abs(array[mid_index] - value), mid_index
 
