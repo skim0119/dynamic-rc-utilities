@@ -20,6 +20,40 @@ KernelType: TypeAlias = Callable[[Spikestamp, InputTime], FeatureArray]
 _default_kernel = partial(decay_spike_counts, decay_rate=5.0)
 
 
+class ExperimentDataView:
+    def __init__(self, data):
+        self.spikestamps = data.spikestamps
+        self.labels = data.labels
+        self.input_time = data.input_time
+
+        self.metadata = data.metadata
+
+        self.feature_set = data.feature_set
+
+        self.pattern_size = data.pattern_size
+        self.pattern_rest = data.pattern_rest
+        self.pattern_start_offset = data.pattern_start_offset
+
+    @property
+    def t(self):
+        return self.input_time
+
+    @property
+    def y(self):
+        return self.labels
+
+    @property
+    def X(self):
+        return self.feature_set
+
+    @property
+    def num_features(self):
+        return self.feature_set.shape[1]
+
+    def __len__(self):
+        return self.labels.size
+
+
 @dataclass(eq=False, kw_only=True)
 class ExperimentData:
     spikestamps: Spikestamps
