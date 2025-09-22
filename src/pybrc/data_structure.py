@@ -61,6 +61,7 @@ class ExperimentData:
     input_time: NDArray[np.float64]
 
     tag: str = "temp"
+    ignore_cache: bool = False
 
     metadata: dict = field(default_factory=dict)
 
@@ -83,7 +84,7 @@ class ExperimentData:
         return self.feature_set.shape[1]
 
     def __post_init__(self):
-        if self._is_cached():
+        if not self.ignore_cache and self._is_cached():
             self._cache_load()
             return
 
