@@ -14,7 +14,7 @@ from matplotlib.pyplot import cm
 import seaborn as sns
 
 from sklearn.model_selection import train_test_split, cross_val_score, learning_curve
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_recall_fscore_support, f1_score, mean_absolute_error
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, precision_recall_fscore_support, f1_score, mean_absolute_error, balanced_accuracy_score, accuracy_score
 from sklearn.linear_model import LinearRegression
 from sklearn.svm import SVC
 import scipy.stats as spst
@@ -120,14 +120,20 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
         f1s = [ ]
         recalls = []
         precisions = []
+        accs = []
+        baccs = []
 
         # Statistics from training
         _, val_X, _,val_y = train_test_split(X, y, test_size=0.33)
         val_label = clf.predict(val_X)
         precision, recall, f1, support = precision_recall_fscore_support(val_y, val_label, average="weighted", zero_division=0)
+        acc = accuracy_score(val_y, val_label)
+        bacc = balanced_accuracy_score(val_y, val_label)
         f1s.append(f1)
         recalls.append(recall)
         precisions.append(precision)
+        accs.append(acc)
+        baccs.append(bacc)
 
         # Statistics from testing
         for test_index, (X_test, y_test) in enumerate(zip(X_tests, y_tests)):
@@ -147,15 +153,21 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
             plt.close()
             
             precision, recall, f1, support = precision_recall_fscore_support(y_test, test_predicted_label, average="weighted", zero_division=0)
+            acc = accuracy_score(y_test, test_predicted_label)
+            bacc = balanced_accuracy_score(y_test, test_predicted_label)
             f1s.append(f1)
             recalls.append(recall)
             precisions.append(precision)
+            accs.append(acc)
+            baccs.append(bacc)
 
         # Plot: f1/recall/precision progression
         plt.figure()
         plt.plot(self.rests, f1s, 'o-', label="f1")
         plt.plot(self.rests, recalls, 'o-', label="recall")
         plt.plot(self.rests, precisions, 'o-', label="precision")
+        plt.plot(self.rests, accs, 'o-', label="acc")
+        plt.plot(self.rests, baccs, 'o-', label="bacc")
         plt.xlabel("rest (min)")
         plt.ylabel("score (weighted average)")
         plt.ylim([-0.1,1.1])
@@ -306,3 +318,39 @@ class DiscreteTemporalRCAnalysis(OperatorMixin):
             plt.savefig(os.path.join(self.analysis_path, f"mean_firing_rate_per_pattern_{pattern}.png"))
             plt.close()
         self.logger.info("done: firng rate for each patterns")
+
+@dataclass
+class DiscreteTemporalRCAnalysisRankOnly(OperatorMixin):
+    tag: str = "rc rank analysis"
+
+    def __post_init__(self):
+        super().__init__()
+
+    def __call__(self, *states):
+        """
+        test_input_state_tuples contain remaining tuples as:
+        ((test_X1, test_y1), (test_X2, test_y2), ...)
+        """
+        log = OrderedDict([])
+
+        os.makedirs(self.analysis_path, exist_ok=True)
+        self.logger.info(f"created: analysis path = {self.analysis_path}")
+        for sidx, state in enumerate(states):
+            X = state
+            if len(X) == 0:
+                self.logger.info(f"missing data: states shape {X.shape=}")
+                continue
+            log[f"X shape {sidx}"] = X.shape
+
+            # rank
+            log[f'rank for state {sidx}'] = int(kernel_rank(X))
+        self.logger.info("done: computed kernel rank")
+
+        self.save_log(log)
+
+        return 1
+
+    def save_log(self, log):
+        log_json = json.dumps(log, indent=4)
+        with open(os.path.join(self.analysis_path, "output.json"), "w") as outfile:
+            outfile.write(log_json)
