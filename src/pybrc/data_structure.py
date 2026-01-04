@@ -17,7 +17,7 @@ InputTime: TypeAlias = Iterable[float]
 FeatureArray: TypeAlias = NDArray[np.float64]
 KernelType: TypeAlias = Callable[[Spikestamp, InputTime], FeatureArray]
 
-_default_kernel = partial(decay_spike_counts, decay_rate=5.0)
+_default_kernel = partial(decay_spike_counts, decay_rate=0.5, amplitude=2)
 
 
 class ExperimentDataView:
@@ -141,6 +141,8 @@ class ExperimentData:
         print("Experiment data summary")
         print(f"number of channels: {self.spikestamps.number_of_channels}")
         print(f"pattern binsize  : {self.pattern_size}s")
+
+        print(f"spike counts: {sum(self.spikestamps.get_count())}")
 
         patterns, counts = np.unique(self.y, return_counts=True)
         print(f"Total number of patterns: {len(self.y)}")
