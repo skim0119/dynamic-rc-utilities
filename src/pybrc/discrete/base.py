@@ -4,10 +4,9 @@ import numpy as np
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
 
-from miv.core.datatype import Spikestamps
+from miv.core import Spikestamps
 from miv.statistics import decay_spike_counts, spike_counts_with_kernel
-from miv.core.operator import OperatorMixin
-from miv.core.operator.wrapper import cache_call
+from miv.core import OperatorMixin
 
 
 @dataclass
